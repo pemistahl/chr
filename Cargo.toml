@@ -29,3 +29,6 @@ categories = ["command-line-utilities"]
 keywords = ["unicode", "character", "text"]
 
 [dependencies]
+
+[build-dependencies]
+reqwest = { version = "0.10.6", features = ["blocking"] }
