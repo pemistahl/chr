@@ -29,6 +29,14 @@ categories = ["command-line-utilities"]
 keywords = ["unicode", "character", "text"]
 
 [dependencies]
+rusqlite = { version = "0.23.1", features = ["bundled"] }
+
+[dev-dependencies]
 
 [build-dependencies]
-reqwest = { version = "0.10.6", features = ["blocking"] }
+csv = "1.1.3"
+reqwest = { version = "0.10.7", features = ["blocking"] }
+rusqlite = { version = "0.23.1", features = ["bundled"] }
+serde = { version = "1.0.114", features = ["derive"] }
+serde_json = "1.0.57"
+zip = "0.5.6"
