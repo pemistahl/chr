@@ -16,13 +16,13 @@
 
 use csv::{Reader, ReaderBuilder};
 use reqwest::blocking::Client;
-use rusqlite::{params, Connection, NO_PARAMS};
+use rusqlite::{params, Connection, Error, NO_PARAMS};
 use serde::Deserialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 use std::env::var_os;
 use std::fs::File;
-use std::io::{BufRead, Write};
+use std::io::Write;
 use std::io::{BufReader, Read};
 use std::ops::RangeInclusive;
 use std::option::Option::Some;
@@ -54,8 +54,6 @@ fn main() {
 
     save_to_database(target_directory_path, unicode_char_data_map);
     compress_database(target_directory_path);
-
-    println!("cargo:rerun-if-changed=build.rs");
 }
 
 fn download_files(target_directory_path: &Path) {
@@ -247,7 +245,7 @@ fn save_to_database(
     database
         .execute(
             r#"
-            CREATE TABLE UnicodeData (
+            CREATE TABLE IF NOT EXISTS UnicodeData (
                 codepoint INTEGER NOT NULL PRIMARY KEY,
                 name TEXT NOT NULL,
                 category TEXT NOT NULL,
@@ -269,6 +267,15 @@ fn save_to_database(
             NO_PARAMS,
         )
         .expect("Database table could not be created");
+
+    let entry_count: Result<u32, Error> =
+        database.query_row("SELECT COUNT(*) FROM UnicodeData", NO_PARAMS, |row| {
+            row.get(0)
+        });
+
+    if entry_count.unwrap() > 0 {
+        return;
+    }
 
     let mut insert_statement = database
         .prepare_cached(
@@ -309,7 +316,9 @@ fn compress_database(target_directory_path: &Path) {
     let mut database_reader = BufReader::new(database_file);
     let mut database = vec![];
 
-    database_reader.read_to_end(&mut database);
+    database_reader
+        .read_to_end(&mut database)
+        .expect("Database could not be read as bytes");
 
     let zip_file_path = target_directory_path.join(ZIP_FILE_NAME);
     let zip_file = File::create(zip_file_path).expect("Empty zip file could not be created");

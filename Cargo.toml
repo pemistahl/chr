@@ -15,7 +15,7 @@
 
 [package]
 name = "chr"
-version = "0.0.0"
+version = "1.0.0"
 authors = ["Peter M. Stahl <pemistahl@gmail.com>"]
 description = """
 A command-line tool that prints useful information about any Unicode character
@@ -29,7 +29,9 @@ categories = ["command-line-utilities"]
 keywords = ["unicode", "character", "text"]
 
 [dependencies]
+dirs = "3.0.1"
 rusqlite = { version = "0.23.1", features = ["bundled"] }
+zip = "0.5.6"
 
 [dev-dependencies]
 
