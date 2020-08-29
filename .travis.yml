@@ -36,11 +36,6 @@ matrix:
           packages:
             - musl-tools
             - libssl-dev
-      after_success: |
-        cargo install cargo-tarpaulin -f
-        cargo tarpaulin --verbose --ciserver travis-ci --out Xml
-        bash <(curl -s https://codecov.io/bash)
-        echo "Uploaded code coverage report"
 
     - name: MacOS Binary 64-Bit
       os: osx
