@@ -44,6 +44,10 @@ jobs:
           brew install gnu-tar
           echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
 
+      - name: Clean target directory
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: cargo clean
+
       - name: Store or retrieve cargo caches
         uses: actions/cache@v2
         with:
