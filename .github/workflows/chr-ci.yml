@@ -18,7 +18,9 @@ jobs:
 
           - os: macos-latest
             name: MacOS Binary 64-Bit
-            target: x86_64-apple-darwin MACOSX_DEPLOYMENT_TARGET=10.7
+            target: x86_64-apple-darwin
+            env:
+              MACOSX_DEPLOYMENT_TARGET: 10.7
 
           - os: windows-latest
             name: Windows Binary 64-Bit
@@ -27,6 +29,9 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v2
+
+      - name: Add rustup target
+        run: rustup target add ${{ matrix.target }}
 
       - name: Store or retrieve cargo caches
         uses: actions/cache@v2
