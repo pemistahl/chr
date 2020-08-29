@@ -44,10 +44,6 @@ jobs:
           brew install gnu-tar
           echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
 
-      - name: Clean target directory
-        if: ${{ matrix.os == 'macos-latest' }}
-        run: cargo clean
-
       - name: Store or retrieve cargo caches
         uses: actions/cache@v2
         with:
@@ -55,7 +51,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-rust-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build in debug mode
         run: cargo build --target ${{ matrix.target }} --locked
