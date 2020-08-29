@@ -1,3 +1,18 @@
+#
+# Copyright © 2020 Peter M. Stahl pemistahl@gmail.com
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either expressed or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 name: chr CI
 
 on: [push, pull_request]
@@ -38,7 +53,9 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install musl-tools libssl-dev
 
-      - name: Install GNU tar # needed to fix file corruption of cache
+      # needed to fix file corruption of cache
+      # https://github.com/actions/cache/issues/403
+      - name: Install GNU tar
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
           brew install gnu-tar
