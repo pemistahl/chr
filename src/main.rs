@@ -55,7 +55,7 @@ fn unzip_database(zip_file_bytes: &[u8], home_directory: &Path) {
         .read_to_end(&mut database_file_bytes)
         .expect("Bytes of database file could not be read");
 
-    let database_directory = home_directory.join(".chr");
+    let database_directory = home_directory.join(DATABASE_DIRECTORY_NAME);
 
     if !database_directory.is_dir() {
         create_dir(&database_directory).expect("Database directory could not be created");
