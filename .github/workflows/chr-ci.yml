@@ -38,6 +38,12 @@ jobs:
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install musl-tools libssl-dev
 
+      - name: Install GNU tar # needed to fix file corruption of cache
+        if: ${{ matrix.os == 'macos-latest' }}
+        run: |
+          brew install gnu-tar
+          echo "::add-path::/usr/local/opt/gnu-tar/libexec/gnubin"
+
       - name: Store or retrieve cargo caches
         uses: actions/cache@v2
         with:
