@@ -30,15 +30,15 @@ keywords = ["unicode", "character", "text"]
 
 [dependencies]
 dirs = "3.0.1"
-rusqlite = { version = "0.23.1", features = ["bundled"] }
-zip = "0.5.6"
+rusqlite = { version = "0.24.1", features = ["bundled"] }
+zip = "0.5.8"
 
 [dev-dependencies]
 
 [build-dependencies]
-csv = "1.1.3"
-reqwest = { version = "0.10.7", features = ["blocking"] }
-rusqlite = { version = "0.23.1", features = ["bundled"] }
-serde = { version = "1.0.114", features = ["derive"] }
-serde_json = "1.0.57"
-zip = "0.5.6"
+csv = "1.1.4"
+reqwest = { version = "0.10.9", features = ["blocking"] }
+rusqlite = { version = "0.24.1", features = ["bundled"] }
+serde = { version = "1.0.117", features = ["derive"] }
+serde_json = "1.0.59"
+zip = "0.5.8"
