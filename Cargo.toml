@@ -31,6 +31,8 @@ keywords = ["unicode", "character", "text"]
 [dependencies]
 dirs = "3.0.1"
 rusqlite = { version = "0.24.1", features = ["bundled"] }
+structopt = "0.3.20"
+term-table = "1.3.0"
 zip = "0.5.8"
 
 [dev-dependencies]
