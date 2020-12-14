@@ -15,14 +15,14 @@
  */
 
 use dirs::home_dir;
-use rusqlite::{Connection, Rows, Statement};
+use rusqlite::{Connection, Row as DatabaseRow, NO_PARAMS};
 use std::char;
 use std::fs::{create_dir, File};
 use std::io::{Cursor, Read, Write};
 use std::iter;
 use std::path::Path;
 use structopt::StructOpt;
-use term_table::row::Row;
+use term_table::row::Row as TableRow;
 use term_table::table_cell::TableCell;
 use term_table::{Table, TableStyle};
 use zip::ZipArchive;
@@ -44,21 +44,49 @@ struct CLI {
     // --------------------
     // ARGS
     // --------------------
-    #[structopt(value_name = "CHARS", required = true)]
+    #[structopt(
+        value_name = "CHARS",
+        required_unless = "name",
+        conflicts_with = "name",
+        help = "One or more characters separated by blank space"
+    )]
     chars: Vec<char>,
+
+    // --------------------
+    // FLAGS
+    // --------------------
+    #[structopt(
+        name = "paging",
+        short,
+        long,
+        help = "Enables terminal paging for large result tables",
+        long_help = "Enables terminal paging for large result tables.\n\
+                     The table can be scrolled through using the 'Arrow Up' and 'Arrow Down' keys."
+    )]
+    is_paging_enabled: bool,
+
+    // --------------------
+    // OPTIONS
+    // --------------------
+    #[structopt(
+        name = "name",
+        value_name = "NAME",
+        short,
+        long,
+        required_unless = "chars",
+        help = "Searches for characters by their name as\n\
+                stated in the Unicode Character Database"
+    )]
+    name: Option<String>,
 }
 
 fn main() {
     let cli: CLI = CLI::from_args();
     let database = connect_to_database();
-    let chars_as_decimals = convert_chars_to_decimals(&cli.chars);
-    let mut statement = prepare_database_statement(&database, chars_as_decimals.len());
-    let rows = statement
-        .query(chars_as_decimals)
-        .expect("Query parameters are invalid");
-    let table = prepare_terminal_table(rows);
+    let table_rows = search_database(&database, &cli);
+    let table = prepare_terminal_table(table_rows);
 
-    println!("{}", table.render());
+    render(table, &cli);
 }
 
 fn connect_to_database() -> Connection {
@@ -105,59 +133,103 @@ fn unzip_database(home_directory: &Path) {
         .expect("Database content could not be written to file");
 }
 
-fn convert_chars_to_decimals(chars: &Vec<char>) -> Vec<u32> {
-    chars.iter().map(|&c| to_decimal_number(c)).collect()
+fn search_database<'a>(database: &'a Connection, cli: &'a CLI) -> Vec<TableRow<'a>> {
+    if !cli.chars.is_empty() {
+        search_database_by_characters(&database, &cli.chars)
+    } else {
+        search_database_by_name(&database, cli.name.as_ref().unwrap())
+    }
 }
 
-fn to_hex_code(c: char) -> String {
-    let escaped_char = c.escape_unicode().to_string();
-    escaped_char[3..escaped_char.len() - 1].to_uppercase()
+fn search_database_by_characters<'a>(
+    database: &'a Connection,
+    characters: &'a Vec<char>,
+) -> Vec<TableRow<'a>> {
+    let mut table_rows = vec![];
+    let chars_as_decimals = convert_chars_to_decimals(characters);
+    let params = iter::repeat("?")
+        .take(chars_as_decimals.len())
+        .collect::<Vec<_>>()
+        .join(",");
+
+    let sql = format!(
+        "SELECT codepoint, name FROM UnicodeData WHERE codepoint IN ({})",
+        params
+    );
+
+    let mut statement = database.prepare(&sql).unwrap();
+    let mut db_rows = statement.query(chars_as_decimals).unwrap();
+
+    while let Some(db_row) = db_rows.next().unwrap() {
+        let table_row = convert_database_row_to_table_row(db_row);
+        table_rows.push(table_row);
+    }
+
+    table_rows
+}
+
+fn search_database_by_name<'a>(database: &'a Connection, name: &'a str) -> Vec<TableRow<'a>> {
+    let mut table_rows = vec![];
+    let sql = format!(
+        "SELECT codepoint, name FROM UnicodeData WHERE name LIKE '%{}%'",
+        name
+    );
+    let mut statement = database.prepare(&sql).unwrap();
+    let mut db_rows = statement.query(NO_PARAMS).unwrap();
+
+    while let Some(db_row) = db_rows.next().unwrap() {
+        let table_row = convert_database_row_to_table_row(db_row);
+        table_rows.push(table_row);
+    }
+
+    table_rows
+}
+
+fn prepare_terminal_table(table_rows: Vec<TableRow>) -> Table {
+    let mut table = Table::new();
+    table.style = TableStyle::rounded();
+    table.add_row(create_table_row(vec!["Char", "Codepoint", "Name"]));
+
+    for row in table_rows {
+        table.add_row(row);
+    }
+
+    table
+}
+
+fn convert_chars_to_decimals(chars: &Vec<char>) -> Vec<u32> {
+    chars.iter().map(|&c| to_decimal_number(c)).collect()
 }
 
 fn to_decimal_number(c: char) -> u32 {
     u32::from_str_radix(&to_hex_code(c), 16).expect("Could not convert hex to decimal number")
 }
 
-fn prepare_database_statement(database: &Connection, param_count: usize) -> Statement {
-    let params = iter::repeat("?")
-        .take(param_count)
-        .collect::<Vec<_>>()
-        .join(",");
-    let sql = format!(
-        r#"
-        SELECT
-            codepoint,
-            name
-        FROM
-            UnicodeData
-        WHERE
-            codepoint IN ({})
-        "#,
-        params
-    );
-    database.prepare(&sql).unwrap()
+fn to_hex_code(c: char) -> String {
+    let escaped_char = c.escape_unicode().to_string();
+    escaped_char[3..escaped_char.len() - 1].to_string()
 }
 
-fn prepare_terminal_table(mut rows: Rows) -> Table {
-    let mut table = Table::new();
-    table.style = TableStyle::rounded();
-    table.add_row(create_table_row(vec!["Char", "Codepoint", "Name"]));
-
-    while let Some(db_row) = rows.next().unwrap() {
-        let c = char::from_u32(db_row.get_unwrap(0)).unwrap();
-        let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
-        let name: String = db_row.get_unwrap(1);
-        table.add_row(create_table_row(vec![&c.to_string(), &hex_code, &name]));
-    }
-
-    table
+fn convert_database_row_to_table_row(db_row: &DatabaseRow) -> TableRow<'static> {
+    let c = char::from_u32(db_row.get_unwrap(0)).unwrap();
+    let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
+    let name: String = db_row.get_unwrap(1);
+    create_table_row(vec![&c.to_string(), &hex_code, &name])
 }
 
-fn create_table_row(columns: Vec<&str>) -> Row<'static> {
+fn create_table_row(columns: Vec<&str>) -> TableRow<'static> {
     let table_cells = columns
         .iter()
         .map(|column| TableCell::new(column))
         .collect::<Vec<_>>();
 
-    Row::new(table_cells)
+    TableRow::new(table_cells)
+}
+
+fn render(table: Table, cli: &CLI) {
+    if cli.is_paging_enabled {
+        minus::page_all(table.render());
+    } else {
+        println!("{}", table.render());
+    }
 }
