@@ -15,16 +15,13 @@
  */
 
 use dirs::home_dir;
-use rusqlite::{Connection, Row as DatabaseRow, NO_PARAMS};
+use rusqlite::{Connection, Row, NO_PARAMS};
 use std::char;
 use std::fs::{create_dir, File};
 use std::io::{Cursor, Read, Write};
 use std::iter;
 use std::path::Path;
 use structopt::StructOpt;
-use term_table::row::Row as TableRow;
-use term_table::table_cell::TableCell;
-use term_table::{Table, TableStyle};
 use zip::ZipArchive;
 
 const DATABASE_DIRECTORY_NAME: &str = ".chr";
@@ -83,10 +80,9 @@ struct CLI {
 fn main() {
     let cli: CLI = CLI::from_args();
     let database = connect_to_database();
-    let table_rows = search_database(&database, &cli);
-    let table = prepare_terminal_table(table_rows);
+    let results = search_database(&database, &cli);
 
-    render(table, &cli);
+    render(results, &cli);
 }
 
 fn connect_to_database() -> Connection {
@@ -133,7 +129,7 @@ fn unzip_database(home_directory: &Path) {
         .expect("Database content could not be written to file");
 }
 
-fn search_database<'a>(database: &'a Connection, cli: &'a CLI) -> Vec<TableRow<'a>> {
+fn search_database<'a>(database: &'a Connection, cli: &'a CLI) -> String {
     if !cli.chars.is_empty() {
         search_database_by_characters(&database, &cli.chars)
     } else {
@@ -141,11 +137,8 @@ fn search_database<'a>(database: &'a Connection, cli: &'a CLI) -> Vec<TableRow<'
     }
 }
 
-fn search_database_by_characters<'a>(
-    database: &'a Connection,
-    characters: &'a Vec<char>,
-) -> Vec<TableRow<'a>> {
-    let mut table_rows = vec![];
+fn search_database_by_characters<'a>(database: &'a Connection, characters: &'a [char]) -> String {
+    let mut results = String::new();
     let chars_as_decimals = convert_chars_to_decimals(characters);
     let params = iter::repeat("?")
         .take(chars_as_decimals.len())
@@ -161,15 +154,15 @@ fn search_database_by_characters<'a>(
     let mut db_rows = statement.query(chars_as_decimals).unwrap();
 
     while let Some(db_row) = db_rows.next().unwrap() {
-        let table_row = convert_database_row_to_table_row(db_row);
-        table_rows.push(table_row);
+        let result = convert_database_row_to_result(db_row);
+        results.push_str(&result);
     }
 
-    table_rows
+    results
 }
 
-fn search_database_by_name<'a>(database: &'a Connection, name: &'a str) -> Vec<TableRow<'a>> {
-    let mut table_rows = vec![];
+fn search_database_by_name<'a>(database: &'a Connection, name: &'a str) -> String {
+    let mut results = String::new();
     let sql = format!(
         "SELECT codepoint, name FROM UnicodeData WHERE name LIKE '%{}%'",
         name
@@ -178,26 +171,14 @@ fn search_database_by_name<'a>(database: &'a Connection, name: &'a str) -> Vec<T
     let mut db_rows = statement.query(NO_PARAMS).unwrap();
 
     while let Some(db_row) = db_rows.next().unwrap() {
-        let table_row = convert_database_row_to_table_row(db_row);
-        table_rows.push(table_row);
+        let result = convert_database_row_to_result(db_row);
+        results.push_str(&result);
     }
 
-    table_rows
+    results
 }
 
-fn prepare_terminal_table(table_rows: Vec<TableRow>) -> Table {
-    let mut table = Table::new();
-    table.style = TableStyle::rounded();
-    table.add_row(create_table_row(vec!["Char", "Codepoint", "Name"]));
-
-    for row in table_rows {
-        table.add_row(row);
-    }
-
-    table
-}
-
-fn convert_chars_to_decimals(chars: &Vec<char>) -> Vec<u32> {
+fn convert_chars_to_decimals(chars: &[char]) -> Vec<u32> {
     chars.iter().map(|&c| to_decimal_number(c)).collect()
 }
 
@@ -210,26 +191,17 @@ fn to_hex_code(c: char) -> String {
     escaped_char[3..escaped_char.len() - 1].to_string()
 }
 
-fn convert_database_row_to_table_row(db_row: &DatabaseRow) -> TableRow<'static> {
+fn convert_database_row_to_result(db_row: &Row) -> String {
     let c = char::from_u32(db_row.get_unwrap(0)).unwrap();
     let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
     let name: String = db_row.get_unwrap(1);
-    create_table_row(vec![&c.to_string(), &hex_code, &name])
+    format!("{}\t{}\n{}\n\n", c, hex_code, name)
 }
 
-fn create_table_row(columns: Vec<&str>) -> TableRow<'static> {
-    let table_cells = columns
-        .iter()
-        .map(|column| TableCell::new(column))
-        .collect::<Vec<_>>();
-
-    TableRow::new(table_cells)
-}
-
-fn render(table: Table, cli: &CLI) {
+fn render(results: String, cli: &CLI) {
     if cli.is_paging_enabled {
-        minus::page_all(table.render());
+        minus::page_all(results);
     } else {
-        println!("{}", table.render());
+        println!("{}", results);
     }
 }

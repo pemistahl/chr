@@ -106,7 +106,7 @@ fn process_unicode_data_file(target_directory_path: &Path) -> BTreeMap<u32, Unic
         let titlecase_mapping = parse_case_mapping(&unicode_data_file_row.titlecase_mapping);
 
         if unicode_data_file_row.name.ends_with("First>") {
-            let name = &unicode_data_file_row.name.split(",").next().unwrap()[1..];
+            let name = &unicode_data_file_row.name.split(',').next().unwrap()[1..];
             let next_row = csv_row_iterator.next().unwrap().unwrap();
             let last_codepoint = to_decimal_number(&next_row.hexcode);
 
@@ -202,22 +202,24 @@ fn process_html_entity_file(
     unicode_char_data_map: &mut BTreeMap<u32, UnicodeCharData>,
 ) {
     let mut file =
-        File::open(target_directory_path.join(HTML_ENTITIES_FILE_NAME)).expect(&format!(
-            "File {} could not be opened for reading",
-            HTML_ENTITIES_FILE_NAME
-        ));
+        File::open(target_directory_path.join(HTML_ENTITIES_FILE_NAME)).unwrap_or_else(|_| {
+            panic!(
+                "File {} could not be opened for reading",
+                HTML_ENTITIES_FILE_NAME
+            )
+        });
 
     let mut file_content = String::new();
 
-    file.read_to_string(&mut file_content).expect(&format!(
-        "File content of {} could not be read",
-        HTML_ENTITIES_FILE_NAME
-    ));
+    file.read_to_string(&mut file_content).unwrap_or_else(|_| {
+        panic!(
+            "File content of {} could not be read",
+            HTML_ENTITIES_FILE_NAME
+        )
+    });
 
-    let entities = serde_json::from_str::<Value>(&file_content).expect(&format!(
-        "File {} could not be deserialized",
-        HTML_ENTITIES_FILE_NAME
-    ));
+    let entities = serde_json::from_str::<Value>(&file_content)
+        .unwrap_or_else(|_| panic!("File {} could not be deserialized", HTML_ENTITIES_FILE_NAME));
 
     for (entity, metadata) in entities.as_object().unwrap() {
         let codepoints = metadata["codepoints"].as_array().unwrap();
@@ -336,10 +338,7 @@ fn open_csv_file_reader(target_directory_path: &Path, file_name: &str) -> Reader
         .has_headers(false)
         .flexible(true)
         .from_path(target_directory_path.join(file_name))
-        .expect(&format!(
-            "File {} could not be opened for reading",
-            file_name
-        ))
+        .unwrap_or_else(|_| panic!("File {} could not be opened for reading", file_name))
 }
 
 fn to_decimal_number(hexcode: &str) -> u32 {
@@ -431,6 +430,7 @@ fn parse_case_mapping(case_mapping: &Option<String>) -> Option<u32> {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 struct UnicodeDataFileRow {
     hexcode: String,
     name: String,
@@ -470,6 +470,7 @@ struct UnicodeCharData {
 }
 
 impl UnicodeCharData {
+    #[allow(clippy::too_many_arguments)]
     fn from(
         unicode_data_file_row: &UnicodeDataFileRow,
         codepoint: u32,
@@ -491,9 +492,9 @@ impl UnicodeCharData {
         unicode_char_data.decomposition_mapping = decomposition_mapping.clone();
         unicode_char_data.numeric_type = numeric_type.clone();
         unicode_char_data.numeric_value = numeric_value.clone();
-        unicode_char_data.uppercase_mapping = uppercase_mapping.clone();
-        unicode_char_data.lowercase_mapping = lowercase_mapping.clone();
-        unicode_char_data.titlecase_mapping = titlecase_mapping.clone();
+        unicode_char_data.uppercase_mapping = *uppercase_mapping;
+        unicode_char_data.lowercase_mapping = *lowercase_mapping;
+        unicode_char_data.titlecase_mapping = *titlecase_mapping;
 
         unicode_char_data.category = unicode_data_file_row.category.clone();
         unicode_char_data.canonical_combining_class =

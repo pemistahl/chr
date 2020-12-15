@@ -33,7 +33,6 @@ dirs = "3.0.1"
 minus = { version = "1.0.3", features = ["static_output"] }
 rusqlite = { version = "0.24.2", features = ["bundled"] }
 structopt = "0.3.21"
-term-table = "1.3.0"
 zip = "0.5.9"
 
 [dev-dependencies]
