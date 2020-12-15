@@ -15,7 +15,7 @@
  */
 
 use dirs::home_dir;
-use rusqlite::{Connection, Row, NO_PARAMS};
+use rusqlite::{Connection, Row, ToSql, NO_PARAMS};
 use std::char;
 use std::fs::{create_dir, File};
 use std::io::{Cursor, Read, Write};
@@ -80,7 +80,7 @@ struct CLI {
 fn main() {
     let cli: CLI = CLI::from_args();
     let database = connect_to_database();
-    let results = search_database(&database, &cli);
+    let results = search_database(database, &cli);
 
     render(results, &cli);
 }
@@ -129,53 +129,50 @@ fn unzip_database(home_directory: &Path) {
         .expect("Database content could not be written to file");
 }
 
-fn search_database<'a>(database: &'a Connection, cli: &'a CLI) -> String {
+fn search_database(database: Connection, cli: &CLI) -> Vec<String> {
+    let mut sql = String::from("SELECT * FROM UnicodeData WHERE ");
+
     if !cli.chars.is_empty() {
-        search_database_by_characters(&database, &cli.chars)
+        let chars_as_decimals = convert_chars_to_decimals(&cli.chars);
+        let params = iter::repeat("?")
+            .take(chars_as_decimals.len())
+            .collect::<Vec<_>>()
+            .join(",");
+
+        sql.push_str(&format!("codepoint IN ({})", params));
+        retrieve_results(database, sql, chars_as_decimals)
     } else {
-        search_database_by_name(&database, cli.name.as_ref().unwrap())
+        sql.push_str(&format!("name LIKE '%{}%'", cli.name.as_ref().unwrap()));
+        retrieve_results(database, sql, NO_PARAMS)
     }
 }
 
-fn search_database_by_characters<'a>(database: &'a Connection, characters: &'a [char]) -> String {
-    let mut results = String::new();
-    let chars_as_decimals = convert_chars_to_decimals(characters);
-    let params = iter::repeat("?")
-        .take(chars_as_decimals.len())
-        .collect::<Vec<_>>()
-        .join(",");
-
-    let sql = format!(
-        "SELECT codepoint, name FROM UnicodeData WHERE codepoint IN ({})",
-        params
-    );
-
+fn retrieve_results<P>(database: Connection, sql: String, params: P) -> Vec<String>
+where
+    P: IntoIterator,
+    P::Item: ToSql,
+{
     let mut statement = database.prepare(&sql).unwrap();
-    let mut db_rows = statement.query(chars_as_decimals).unwrap();
+    let mut rows = statement.query(params).unwrap();
+    let mut results = vec![];
 
-    while let Some(db_row) = db_rows.next().unwrap() {
-        let result = convert_database_row_to_result(db_row);
-        results.push_str(&result);
+    while let Some(row) = rows.next().unwrap() {
+        let result = convert_database_row_to_result(row);
+        results.push(result);
     }
 
     results
 }
 
-fn search_database_by_name<'a>(database: &'a Connection, name: &'a str) -> String {
-    let mut results = String::new();
-    let sql = format!(
-        "SELECT codepoint, name FROM UnicodeData WHERE name LIKE '%{}%'",
-        name
-    );
-    let mut statement = database.prepare(&sql).unwrap();
-    let mut db_rows = statement.query(NO_PARAMS).unwrap();
+fn convert_database_row_to_result(row: &Row) -> String {
+    let codepoint_column_index = row.column_index("codepoint").unwrap();
+    let name_column_index = row.column_index("name").unwrap();
 
-    while let Some(db_row) = db_rows.next().unwrap() {
-        let result = convert_database_row_to_result(db_row);
-        results.push_str(&result);
-    }
+    let c = char::from_u32(row.get_unwrap(codepoint_column_index)).unwrap();
+    let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
+    let name: String = row.get_unwrap(name_column_index);
 
-    results
+    format!("{}\t{}\n{}", c, hex_code, name)
 }
 
 fn convert_chars_to_decimals(chars: &[char]) -> Vec<u32> {
@@ -191,17 +188,18 @@ fn to_hex_code(c: char) -> String {
     escaped_char[3..escaped_char.len() - 1].to_string()
 }
 
-fn convert_database_row_to_result(db_row: &Row) -> String {
-    let c = char::from_u32(db_row.get_unwrap(0)).unwrap();
-    let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
-    let name: String = db_row.get_unwrap(1);
-    format!("{}\t{}\n{}\n\n", c, hex_code, name)
-}
+fn render(mut results: Vec<String>, cli: &CLI) {
+    if results.len() >= 10 {
+        let summary = format!("### {} results found ###", results.len());
+        results.insert(0, summary.clone());
+        results.push(summary);
+    }
 
-fn render(results: String, cli: &CLI) {
+    let result = results.join("\n\n");
+
     if cli.is_paging_enabled {
-        minus::page_all(results);
+        minus::page_all(result);
     } else {
-        println!("{}", results);
+        println!("{}", result);
     }
 }
