@@ -1,5 +1,5 @@
 /*
- * Copyright © 2020 Peter M. Stahl pemistahl@gmail.com
+ * Copyright © 2021 Peter M. Stahl pemistahl@gmail.com
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
+mod category;
+
+use crate::category::Category;
+use colored::Colorize;
 use dirs::home_dir;
 use rusqlite::{Connection, Row, ToSql, NO_PARAMS};
 use std::char;
+use std::fmt::Write as FmtWrite;
 use std::fs::{create_dir, File};
 use std::io::{Cursor, Read, Write};
 use std::iter;
 use std::path::Path;
+use std::str::FromStr;
 use structopt::StructOpt;
 use zip::ZipArchive;
 
@@ -53,14 +59,21 @@ struct CLI {
     // FLAGS
     // --------------------
     #[structopt(
-        name = "paging",
+        name = "no-paging",
+        long,
+        help = "Disables paging for the output in the terminal",
+        display_order = 1
+    )]
+    is_paging_disabled: bool,
+
+    #[structopt(
+        name = "colorize",
         short,
         long,
-        help = "Enables terminal paging for large result tables",
-        long_help = "Enables terminal paging for large result tables.\n\
-                     The table can be scrolled through using the 'Arrow Up' and 'Arrow Down' keys."
+        help = "Provides syntax highlighting for the Unicode database entries",
+        display_order = 2
     )]
-    is_paging_enabled: bool,
+    is_output_colorized: bool,
 
     // --------------------
     // OPTIONS
@@ -130,7 +143,8 @@ fn unzip_database(home_directory: &Path) {
 }
 
 fn search_database(database: Connection, cli: &CLI) -> Vec<String> {
-    let mut sql = String::from("SELECT * FROM UnicodeData WHERE ");
+    let mut sql =
+        String::from("SELECT codepoint, name, category, block, age FROM UnicodeData WHERE ");
 
     if !cli.chars.is_empty() {
         let chars_as_decimals = convert_chars_to_decimals(&cli.chars);
@@ -140,14 +154,14 @@ fn search_database(database: Connection, cli: &CLI) -> Vec<String> {
             .join(",");
 
         sql.push_str(&format!("codepoint IN ({})", params));
-        retrieve_results(database, sql, chars_as_decimals)
+        retrieve_results(database, sql, chars_as_decimals, cli)
     } else {
         sql.push_str(&format!("name LIKE '%{}%'", cli.name.as_ref().unwrap()));
-        retrieve_results(database, sql, NO_PARAMS)
+        retrieve_results(database, sql, NO_PARAMS, cli)
     }
 }
 
-fn retrieve_results<P>(database: Connection, sql: String, params: P) -> Vec<String>
+fn retrieve_results<P>(database: Connection, sql: String, params: P, cli: &CLI) -> Vec<String>
 where
     P: IntoIterator,
     P::Item: ToSql,
@@ -155,24 +169,58 @@ where
     let mut statement = database.prepare(&sql).unwrap();
     let mut rows = statement.query(params).unwrap();
     let mut results = vec![];
+    let mut idx = 1;
 
     while let Some(row) = rows.next().unwrap() {
-        let result = convert_database_row_to_result(row);
+        let result = convert_database_row_to_result(row, idx, cli);
         results.push(result);
+        idx += 1;
     }
 
     results
 }
 
-fn convert_database_row_to_result(row: &Row) -> String {
+fn convert_database_row_to_result(row: &Row, idx: u32, cli: &CLI) -> String {
     let codepoint_column_index = row.column_index("codepoint").unwrap();
     let name_column_index = row.column_index("name").unwrap();
+    let category_column_index = row.column_index("category").unwrap();
+    let block_column_index = row.column_index("block").unwrap();
+    let age_column_index = row.column_index("age").unwrap();
 
     let c = char::from_u32(row.get_unwrap(codepoint_column_index)).unwrap();
     let hex_code = format!("U+{:04x}", to_decimal_number(c)).to_uppercase();
     let name: String = row.get_unwrap(name_column_index);
+    let category: String = row.get_unwrap(category_column_index);
+    let category_description: &str = Category::from_str(&category).unwrap().description();
+    let block: String = row.get_unwrap(block_column_index);
+    let age: String = row.get_unwrap(age_column_index);
+    let formatted_age = format!("since {}", age);
 
-    format!("{}\t{}\n{}", c, hex_code, name)
+    if cli.is_output_colorized {
+        let idx_str = format!("{}.", idx);
+        let colored_idx = idx_str.as_str().bright_white().on_bright_blue();
+        let colored_hex_code = hex_code.as_str().green();
+        let colored_name = name.as_str().cyan();
+        let colored_category = category_description.red();
+        let colored_block = block.as_str().purple();
+        let colored_age = formatted_age.as_str().yellow();
+
+        format!(
+            "{}\t{}\t{}\n{}\n{}\t{}\n{}",
+            colored_idx,
+            c,
+            colored_hex_code,
+            colored_name,
+            colored_block,
+            colored_category,
+            colored_age
+        )
+    } else {
+        format!(
+            "{}.\t{}\t{}\n{}\n{}\t{}\n{}",
+            idx, c, hex_code, name, block, category_description, formatted_age
+        )
+    }
 }
 
 fn convert_chars_to_decimals(chars: &[char]) -> Vec<u32> {
@@ -189,17 +237,18 @@ fn to_hex_code(c: char) -> String {
 }
 
 fn render(mut results: Vec<String>, cli: &CLI) {
-    if results.len() >= 10 {
-        let summary = format!("### {} results found ###", results.len());
-        results.insert(0, summary.clone());
-        results.push(summary);
+    if !cli.is_paging_disabled && cli.name.is_some() {
+        results.insert(0, format!(">>> {} results found", results.len()));
     }
 
     let result = results.join("\n\n");
 
-    if cli.is_paging_enabled {
-        minus::page_all(result);
-    } else {
+    if cli.is_paging_disabled {
         println!("{}", result);
+    } else {
+        let mut output = minus::Pager::new();
+        writeln!(output.lines, "{}", result)
+            .expect("Terminal output could not be written to pager");
+        minus::page_all(output).expect("Pager could not be initialized");
     }
 }

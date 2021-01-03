@@ -29,18 +29,21 @@ categories = ["command-line-utilities"]
 keywords = ["unicode", "character", "text"]
 
 [dependencies]
+colored = "2.0.0"
 dirs = "3.0.1"
-minus = { version = "1.0.3", features = ["static_output"] }
+minus = { version = "2.1.0", features = ["static_output"] }
 rusqlite = { version = "0.24.2", features = ["bundled"] }
 structopt = "0.3.21"
+strum = "0.20.0"
+strum_macros = "0.20.1"
 zip = "0.5.9"
 
 [dev-dependencies]
 
 [build-dependencies]
 csv = "1.1.5"
-reqwest = { version = "0.10.9", features = ["blocking"] }
+reqwest = { version = "0.10.10", features = ["blocking"] }
 rusqlite = { version = "0.24.2", features = ["bundled"] }
 serde = { version = "1.0.118", features = ["derive"] }
-serde_json = "1.0.60"
+serde_json = "1.0.61"
 zip = "0.5.9"
