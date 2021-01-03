@@ -27,6 +27,7 @@ use std::io::{Cursor, Read, Write};
 use std::iter;
 use std::path::Path;
 use std::str::FromStr;
+use structopt::clap::AppSettings::ColoredHelp;
 use structopt::StructOpt;
 use zip::ZipArchive;
 
@@ -35,13 +36,14 @@ const DATABASE_FILE_NAME: &str = "chr_1_0_0.db";
 
 #[derive(StructOpt)]
 #[structopt(
-    author = "© 2020 Peter M. Stahl <pemistahl@gmail.com>",
+    author = "© 2021 Peter M. Stahl <pemistahl@gmail.com>",
     about = "Licensed under the Apache License, Version 2.0\n\
              Downloadable from https://crates.io/crates/chr\n\
              Source code at https://github.com/pemistahl/chr\n\n\
-             chr is a command-line tool that prints useful\n\
-             information about any Unicode character.",
-    version_short = "v"
+             chr is a command-line tool that gives\n\
+             information about Unicode characters.",
+    version_short = "v",
+    global_settings = &[ColoredHelp]
 )]
 struct CLI {
     // --------------------
@@ -61,7 +63,7 @@ struct CLI {
     #[structopt(
         name = "no-paging",
         long,
-        help = "Disables paging for the output in the terminal",
+        help = "Disables paging for the terminal output",
         display_order = 1
     )]
     is_paging_disabled: bool,
@@ -70,7 +72,7 @@ struct CLI {
         name = "colorize",
         short,
         long,
-        help = "Provides syntax highlighting for the Unicode database entries",
+        help = "Provides syntax highlighting for the terminal output",
         display_order = 2
     )]
     is_output_colorized: bool,

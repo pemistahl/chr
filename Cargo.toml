@@ -1,5 +1,5 @@
 #
-# Copyright © 2020 Peter M. Stahl pemistahl@gmail.com
+# Copyright © 2021 Peter M. Stahl pemistahl@gmail.com
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ name = "chr"
 version = "1.0.0"
 authors = ["Peter M. Stahl <pemistahl@gmail.com>"]
 description = """
-A command-line tool that prints useful information about any Unicode character
+A command-line tool that gives information about Unicode characters
 """
 homepage = "https://github.com/pemistahl/chr"
 repository = "https://github.com/pemistahl/chr"
@@ -39,6 +39,9 @@ strum_macros = "0.20.1"
 zip = "0.5.9"
 
 [dev-dependencies]
+assert_cmd = "1.0.2"
+indoc = "1.0.3"
+predicates = "1.0.6"
 
 [build-dependencies]
 csv = "1.1.5"
