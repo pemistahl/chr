@@ -20,37 +20,36 @@ use predicates::prelude::*;
 use std::process::Command;
 
 #[test]
-#[ignore]
 fn succeeds_with_character_search_option() {
     let mut chr = init_command();
-    chr.args(&["--no-paging", "Ä", "@", "$", "ß", "!"]);
+    chr.args(&["--no-paging", "Q", "n", "5", "c", "Ä"]);
     chr.assert()
         .success()
         .stdout(predicate::str::contains(indoc!(
             "
-            1.	!	U+0021
-            EXCLAMATION MARK
-            Basic Latin	Other Punctuation
+            1.	5	U+0035
+            DIGIT FIVE
+            Basic Latin	Decimal Number
             since 1.1
 
-            2.	$	U+0024
-            DOLLAR SIGN
-            Basic Latin	Currency Sign
+            2.	Q	U+0051
+            LATIN CAPITAL LETTER Q
+            Basic Latin	Uppercase Letter
             since 1.1
 
-            3.	@	U+0040
-            COMMERCIAL AT
-            Basic Latin	Other Punctuation
+            3.	c	U+0063
+            LATIN SMALL LETTER C
+            Basic Latin	Lowercase Letter
             since 1.1
 
-            4.	Ä	U+00C4
+            4.	n	U+006E
+            LATIN SMALL LETTER N
+            Basic Latin	Lowercase Letter
+            since 1.1
+
+            5.	Ä	U+00C4
             LATIN CAPITAL LETTER A WITH DIAERESIS
             Latin-1 Supplement	Uppercase Letter
-            since 1.1
-
-            5.	ß	U+00DF
-            LATIN SMALL LETTER SHARP S
-            Latin-1 Supplement	Lowercase Letter
             since 1.1
             "
         )));
