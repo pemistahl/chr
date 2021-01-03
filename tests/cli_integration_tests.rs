@@ -20,6 +20,7 @@ use predicates::prelude::*;
 use std::process::Command;
 
 #[test]
+#[ignore]
 fn succeeds_with_character_search_option() {
     let mut chr = init_command();
     chr.args(&["--no-paging", "Ä", "@", "$", "ß", "!"]);
