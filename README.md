@@ -4,7 +4,6 @@
 
 [![Build Status](https://github.com/pemistahl/chr/workflows/chr%20CI/badge.svg?branch=master)](https://github.com/pemistahl/chr/actions?query=workflow%3A%22chr+CI%22+branch%3Amaster)
 [![dependency status](https://deps.rs/crate/chr/1.0.0/status.svg)](https://deps.rs/crate/chr/1.0.0)
-[![codecov](https://codecov.io/gh/pemistahl/chr/branch/master/graph/badge.svg)](https://codecov.io/gh/pemistahl/chr)
 [![lines of code](https://tokei.rs/b1/github/pemistahl/chr?category=code)](https://github.com/XAMPPRocky/tokei)
 [![Downloads](https://img.shields.io/crates/d/chr.svg)](https://crates.io/crates/chr)
 
