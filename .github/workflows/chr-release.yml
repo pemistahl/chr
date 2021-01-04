@@ -20,17 +20,11 @@ on:
     tags:
       - v1.*
 
-env:
-  CRATE_NAME: chr
-
 jobs:
   create-release:
     name: ${{ matrix.name }}
 
     runs-on: ${{ matrix.os }}
-
-    env:
-      TARGET: ${{ matrix.target }}
 
     strategy:
       matrix:
@@ -55,10 +49,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Add rustup target
-        run: rustup target add $TARGET
+        run: rustup target add ${{ matrix.target }}
 
       - name: Build in release mode
-        run: cargo build --release --target $TARGET --locked
+        run: cargo build --release --target ${{ matrix.target }} --locked
 
       - name: Get latest release version number
         id: get_version
@@ -66,13 +60,13 @@ jobs:
 
       - name: Create zip file on Windows
         if: ${{ matrix.os == 'windows-latest' }}
-        run: zip $CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.zip target/$TARGET/release/$CRATE_NAME.exe
+        run: zip chr-${{ steps.get_version.outputs.version }}-${{ matrix.target }}.zip target/${{ matrix.target }}/release/chr.exe
 
       - name: Create tar.gz file on macOS and Linux
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
-          chmod +x target/$TARGET/release/$CRATE_NAME
-          tar -zcf target/$TARGET/release/$CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.tar.gz -C target/$TARGET/release $CRATE_NAME
+          chmod +x target/${{ matrix.target }}/release/chr
+          tar -zcf target/${{ matrix.target }}/release/chr-${{ steps.get_version.outputs.version }}-${{ matrix.target }}.tar.gz -C target/${{ matrix.target }}/release chr
 
       - name: Upload release and assets to GitHub
         uses: svenstaro/upload-release-action@v2
@@ -81,7 +75,7 @@ jobs:
           tag: ${{ github.ref }}
           release_name: chr ${{ steps.get_version.outputs.version-without-v }}
           file_glob: true
-          file: target/$TARGET/release/$CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.{zip,tar.gz}
+          file: target/${{ matrix.target }}/release/chr-${{ steps.get_version.outputs.version }}-${{ matrix.target }}.{zip,tar.gz}
 
       - name: Upload release to crates.io
         uses: katyo/publish-crates@v1
