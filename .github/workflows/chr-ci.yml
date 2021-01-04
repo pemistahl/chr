@@ -73,6 +73,14 @@ jobs:
             target
           key: ${{ runner.os }}-rust-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Remove existing db directory on macOS and Linux
+        if: ${{ matrix.os != 'windows-latest' }}
+        run: rm -rf ~/.chr
+
+      - name: Remove existing db directory on Windows
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: rmdir /Q /S ~/.chr
+
       - name: Build in debug mode
         run: cargo build --target ${{ matrix.target }} --locked
 
