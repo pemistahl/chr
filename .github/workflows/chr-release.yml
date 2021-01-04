@@ -51,6 +51,12 @@ jobs:
       - name: Add rustup target
         run: rustup target add ${{ matrix.target }}
 
+      - name: Install apt packages
+        if: ${{ matrix.os == 'ubuntu-latest' }}
+        run: |
+          sudo apt-get install musl-tools libssl-dev
+          sudo ln -s /usr/bin/g++ /usr/bin/musl-g++
+
       - name: Build in release mode
         run: cargo build --release --target ${{ matrix.target }} --locked
 
