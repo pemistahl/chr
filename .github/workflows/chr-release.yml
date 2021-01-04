@@ -31,7 +31,6 @@ jobs:
 
     env:
       TARGET: ${{ matrix.target }}
-      RELEASE_VERSION: ${{ steps.get_release_version.outputs.version }}
 
     strategy:
       matrix:
@@ -62,27 +61,27 @@ jobs:
         run: cargo build --release --target $TARGET --locked
 
       - name: Get latest release version number
-        id: get_release_version
+        id: get_version
         uses: battila7/get-version-action@v2
 
       - name: Create zip file on Windows
         if: ${{ matrix.os == 'windows-latest' }}
-        run: zip $CRATE_NAME-$RELEASE_VERSION-$TARGET.zip target/$TARGET/release/$CRATE_NAME.exe
+        run: zip $CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.zip target/$TARGET/release/$CRATE_NAME.exe
 
       - name: Create tar.gz file on macOS and Linux
         if: ${{ matrix.os != 'windows-latest' }}
         run: |
           chmod +x target/$TARGET/release/$CRATE_NAME
-          tar -zcf target/$TARGET/release/$CRATE_NAME-$RELEASE_VERSION-$TARGET.tar.gz -C target/$TARGET/release $CRATE_NAME
+          tar -zcf target/$TARGET/release/$CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.tar.gz -C target/$TARGET/release $CRATE_NAME
 
       - name: Upload release and assets to GitHub
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref }}
-          release_name: chr $RELEASE_VERSION
+          release_name: chr ${{ steps.get_version.outputs.version-without-v }}
           file_glob: true
-          file: target/$TARGET/release/$CRATE_NAME-$RELEASE_VERSION-$TARGET.{zip,tar.gz}
+          file: target/$TARGET/release/$CRATE_NAME-${{ steps.get_version.outputs.version }}-$TARGET.{zip,tar.gz}
 
       - name: Upload release to crates.io
         uses: katyo/publish-crates@v1
