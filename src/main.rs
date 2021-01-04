@@ -19,7 +19,7 @@ mod category;
 use crate::category::Category;
 use colored::Colorize;
 use dirs::home_dir;
-use rusqlite::{Connection, OpenFlags, Row, ToSql, NO_PARAMS};
+use rusqlite::{Connection, Row, ToSql, NO_PARAMS};
 use std::char;
 use std::fmt::Write as FmtWrite;
 use std::fs::{create_dir, File};

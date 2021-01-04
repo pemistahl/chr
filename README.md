@@ -166,7 +166,7 @@ cargo test
 
 An alternative tool named [*cha(rs)*](https://github.com/antifuchs/chars) already exists that targets
 a similar purpose. Currently, it offers more character properties than *chr*. Unfortunately, it lacks 
-a proper command-line interface, colorization, and the presented information is not neatly arranged, 
+a proper command-line interface, paging, colorization, and the presented information is not neatly arranged, 
 in my opinion. It also bundles all the UCD files in its repository which is not necessary and impedes 
 maintenance and future updates.
 
