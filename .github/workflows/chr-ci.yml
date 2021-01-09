@@ -85,8 +85,8 @@ jobs:
       # https://github.com/pemistahl/chr/runs/1646184911?check_suite_focus=true#step:10:106
       # ##########################################################
 
-      #- name: Test in debug mode
-      #  run: cargo test --target ${{ matrix.target }}
+      - name: Test in debug mode
+        run: cargo test --target ${{ matrix.target }}
 
       #- name: Create code coverage report
       #  if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'push' }}
