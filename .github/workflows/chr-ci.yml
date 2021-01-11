@@ -46,6 +46,15 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     steps:
+      - name: Unzip database
+        run: |
+          mkdir .chr
+          cd .chr
+          wget --quiet https://github.com/actions/virtual-environments/files/5797341/chr_1_0_0.db.zip
+          unzip chr_1_0_0.db.zip
+          sqlite3 chr_1_0_0.db '.tables'
+          sqlite3 chr_1_0_0.db 'SELECT * FROM UnicodeData LIMIT 10;'
+
       - name: Check out repository
         uses: actions/checkout@v2
 
