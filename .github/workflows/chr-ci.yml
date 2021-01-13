@@ -29,9 +29,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         include:
-          - os: ubuntu-20.04
+          - os: ubuntu-latest
             name: Linux Binary 64-Bit
             target: x86_64-unknown-linux-musl
 
@@ -46,15 +46,6 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     steps:
-      - name: Unzip database
-        run: |
-          mkdir .chr
-          cd .chr
-          wget --quiet https://github.com/actions/virtual-environments/files/5797341/chr_1_0_0.db.zip
-          unzip chr_1_0_0.db.zip
-          sqlite3 chr_1_0_0.db '.tables'
-          sqlite3 chr_1_0_0.db 'SELECT * FROM UnicodeData LIMIT 10;'
-
       - name: Check out repository
         uses: actions/checkout@v2
 
@@ -62,7 +53,7 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Install apt packages
-        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: sudo apt-get install musl-tools libssl-dev
 
       # needed to fix file corruption of cache
@@ -85,22 +76,14 @@ jobs:
       - name: Build in debug mode
         run: cargo build --target ${{ matrix.target }} --locked
 
-      # ##########################################################
-      # TESTS ARE CURRENTLY NOT WORKING RELIABLY ON GITHUB
-      # BECAUSE THE SQLITE DB CANNOT BE ACCESSED WITHOUT PROBLEMS.
-      # THIS IS A GITHUB ISSUE AND MUST BE INVESTIGATED.
-      #
-      # error:
-      # https://github.com/pemistahl/chr/runs/1646184911?check_suite_focus=true#step:10:106
-      # ##########################################################
-
+      # Tests must be run single-threaded to prevent database deadlock on Ubuntu
       - name: Test in debug mode
-        run: cargo test --target ${{ matrix.target }}
+        run: cargo test --target ${{ matrix.target }} -- --test-threads 1
 
-      #- name: Create code coverage report
-      #  if: ${{ matrix.os == 'ubuntu-20.04' && github.event_name == 'push' }}
-      #  uses: actions-rs/tarpaulin@v0.1
+      - name: Create code coverage report
+        if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'push' }}
+        uses: actions-rs/tarpaulin@v0.1
 
-      #- name: Upload code coverage report to Codecov
-      #  if: ${{ matrix.os == 'ubuntu-20.04' && github.event_name == 'push' }}
-      #  uses: codecov/codecov-action@v1
+      - name: Upload code coverage report to Codecov
+        if: ${{ matrix.os == 'ubuntu-latest' && github.event_name == 'push' }}
+        uses: codecov/codecov-action@v1
